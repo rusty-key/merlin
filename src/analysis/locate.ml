@@ -610,6 +610,7 @@ module Env_lookup : sig
 
   val with_context
      : Context.t
+    -> [ `Any | `Type ]
     -> Longident.t
     -> Env.t
     -> (Path.t * Namespaced_path.t * Location.t) option
@@ -621,20 +622,23 @@ module Env_lookup : sig
 
 end = struct
 
-  let namespaces : Context.t -> _ = function
-    | Type          -> [ `Type ; `Mod ; `Modtype ; `Constr ; `Labels ; `Vals ]
-    | Module_type   -> [ `Modtype ; `Mod ; `Type ; `Constr ; `Labels ; `Vals ]
-    | Expr | Patt   -> [ `Vals ; `Mod ; `Modtype ; `Constr ; `Labels ; `Type ]
-    | Unknown       -> [ `Vals ; `Type ; `Constr ; `Mod ; `Modtype ; `Labels ]
-    | Label _       -> [ `Labels; `Mod ]
-    | Constructor _ -> [ `Constr; `Mod ]
-    | Module_path   -> [ `Mod ]
+  let namespaces : [ `Any | `Type ] -> Context.t -> _ = fun kind ctx ->
+    match kind, ctx with
+    | `Any, Type          -> [ `Type ; `Mod ; `Modtype ; `Constr ; `Labels ; `Vals ]
+    | `Any, Module_type   -> [ `Modtype ; `Mod ; `Type ; `Constr ; `Labels ; `Vals ]
+    | `Any, (Expr | Patt) -> [ `Vals ; `Mod ; `Modtype ; `Constr ; `Labels ; `Type ]
+    | `Any, Unknown       -> [ `Vals ; `Type ; `Constr ; `Mod ; `Modtype ; `Labels ]
+    | `Any, Label _       -> [ `Labels; `Mod ]
+    | `Any, Constructor _ -> [ `Constr; `Mod ]
+    | `Any, Module_path   -> [ `Mod ]
+    | `Type, (Type | Module_type | Expr | Patt | Unknown) -> [ `Type ]
+    | `Type, (Label _ | Constructor _ | Module_path) -> []
 
   exception Found of (Path.t * Namespaced_path.t * Location.t)
 
-  let with_context (ctxt : Context.t) ident env =
+  let with_context (ctxt : Context.t) kind ident env =
     try
-      List.iter (namespaces ctxt) ~f:(fun namespace ->
+      List.iter (namespaces kind ctxt) ~f:(fun namespace ->
         try
           match namespace with
           | `Constr ->
@@ -719,12 +723,12 @@ let from_completion_entry ~config ~lazy_trie ~pos (namespace, path, loc) =
   locate ~config ~ml_or_mli:`MLI ~path:tagged_path ~pos ~str_ident loc
     ~lazy_trie
 
-let from_longident ~config ~env ~lazy_trie ~pos ctxt ml_or_mli lid =
+let from_longident ~config ~env ~lazy_trie ~pos ctxt kind ml_or_mli lid =
   let ident, is_label = Longident.keep_suffix lid in
   let str_ident = String.concat ~sep:"." (Longident.flatten ident) in
   match
     if not is_label then
-      Env_lookup.with_context ctxt ident env
+      Env_lookup.with_context ctxt kind ident env
     else
       Env_lookup.label ident env
   with
@@ -813,7 +817,7 @@ let inspect_context browse lid pos : Context.t option =
     | _ ->
       Some Unknown
 
-let from_string ~config ~env ~local_defs ~pos switch path =
+let from_string ~config ~env ~local_defs ~pos kind switch path =
   let browse = Mbrowse.of_typedtree local_defs in
   let lazy_trie = lazy (Typedtrie.of_browses ~local_buffer:true
                           [Browse_tree.of_browse browse]) in
@@ -828,7 +832,7 @@ let from_string ~config ~env ~local_defs ~pos switch path =
       path (match switch with `ML -> ".ml" | `MLI -> ".mli") ;
     let_ref loadpath (Mconfig.cmt_path config) @@ fun () ->
     match
-      from_longident ~config ~pos ~env ~lazy_trie ctxt switch lid
+      from_longident ~config ~pos ~env ~lazy_trie ctxt kind switch lid
     with
     | `File_not_found _ | `Not_found _ | `Not_in_env _ as err -> err
     | `Builtin -> `Builtin path
@@ -862,7 +866,7 @@ let get_doc ~config ~env ~local_defs ~comments ~pos =
         `Found ({ Location. loc_start=pos; loc_end=pos ; loc_ghost=true }, None)
       | Some ctxt ->
         log ~title:"get_doc" "looking for the doc of '%s'" path ;
-        from_longident ~config ~pos ~env ~lazy_trie ctxt `MLI lid
+        from_longident ~config ~pos ~env ~lazy_trie ctxt `Any `MLI lid
       end
   with
   | `Found (_, Some doc) ->

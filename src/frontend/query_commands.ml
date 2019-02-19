@@ -490,7 +490,7 @@ let dispatch pipeline (type a) : a Query_protocol.t -> a =
     begin match
       Locate.from_string
         ~config:(Mpipeline.final_config pipeline)
-        ~env ~local_defs ~pos ml_or_mli path
+        ~env ~local_defs ~pos `Any ml_or_mli path
     with
     | `Found (file, pos) ->
       Locate.log ~title:"result"

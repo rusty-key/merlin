@@ -33,6 +33,7 @@ val from_string
   -> env:Env.t
   -> local_defs:Mtyper.typedtree
   -> pos:Lexing.position
+  -> [ `Any | `Type ]
   -> [ `ML | `MLI ]
   -> string
   -> [> `File_not_found of string
