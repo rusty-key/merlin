@@ -320,7 +320,7 @@ module Context = struct
     | Label of Types.label_description (* Similar to constructors. *)
     | Module_path
     | Module_type
-    | Patt
+    | Patt of Typedtree.pattern_desc
     | Type
     | Unknown
 
@@ -330,7 +330,7 @@ module Context = struct
     | Label lbl -> Printf.sprintf "record field %s" lbl.lbl_name
     | Module_path -> "module path"
     | Module_type -> "module type"
-    | Patt -> "pattern"
+    | Patt _ -> "pattern"
     | Type -> "type"
     | Unknown -> "unknown"
 end
@@ -349,7 +349,7 @@ let namespaces_of_context ctx =
     [ Types; Modules; Module_types; Constructors; Labels; Values; ]
   | Module_type ->
     [ Module_types; Modules; Types; Constructors; Labels; Values ]
-  | (Expr | Patt) ->
+  | (Expr | Patt _) ->
     [ Values ; Modules ; Module_types ; Constructors ; Labels ; Types ]
   | Unknown ->
     [ Values ; Types ; Constructors ; Modules ; Module_types ; Labels ]
@@ -633,21 +633,29 @@ let recover _ =
 
 module Env_lookup : sig
 
+  type t =
+    | At of Path.t * Namespaced_path.t * Location.t
+    | At_origin
+
   val in_namespaces
      : namespace list
     -> Context.t
     -> Longident.t
     -> Env.t
-    -> (Path.t * Namespaced_path.t * Location.t) option
+    -> t option
 
    val label
      : Longident.t
      -> Env.t
-    -> (Path.t * Namespaced_path.t * Location.t) option
+    -> t option
 
 end = struct
 
-  exception Found of (Path.t * Namespaced_path.t * Location.t)
+  type t =
+    | At of Path.t * Namespaced_path.t * Location.t
+    | At_origin
+
+  exception Found of t
 
   let in_namespaces namespaces ctxt ident env =
     try
@@ -663,25 +671,44 @@ end = struct
             in
             let path, loc = path_and_loc_of_cstr cd env in
             (* TODO: Use [`Constr] here instead of [`Type] *)
-            raise (Found (path, Namespaced_path.of_path ~namespace:`Type path, loc))
+            let ns_path = Namespaced_path.of_path ~namespace:`Type path in
+            raise (Found (At (path, ns_path, loc)))
           | Modules ->
             log ~title:"lookup" "lookup in module namespace" ;
             let path = Env.lookup_module ~load:true ident env in
             let md = Env.find_module path env in
-            raise (Found (path, Namespaced_path.of_path ~namespace:`Mod path, md.Types.md_loc))
+            let ns_path = Namespaced_path.of_path ~namespace:`Mod path in
+            raise (Found (At (path, ns_path, md.Types.md_loc)))
           | Module_types ->
             log ~title:"lookup" "lookup in module type namespace" ;
             let path, mtd = Env.lookup_modtype ident env in
-            raise (Found (path, Namespaced_path.of_path ~namespace:`Modtype path, mtd.Types.mtd_loc))
+            let ns_path = Namespaced_path.of_path ~namespace:`Modtype path in
+            raise (Found (At (path, ns_path, mtd.Types.mtd_loc)))
           | Types ->
             log ~title:"lookup" "lookup in type namespace" ;
             let path = Env.lookup_type ident env in
+            let ns_path = Namespaced_path.of_path ~namespace:`Type path in
             let typ_decl = Env.find_type path env in
-            raise (Found (path, Namespaced_path.of_path ~namespace:`Type path, typ_decl.Types.type_loc))
+            raise (Found (At (path, ns_path, typ_decl.Types.type_loc)))
           | Values ->
-            log ~title:"lookup" "lookup in value namespace" ;
-            let path, val_desc = Env.lookup_value ident env in
-            raise (Found (path, Namespaced_path.of_path ~namespace:`Vals path, val_desc.Types.val_loc))
+            begin match ctxt with
+            | Patt Tpat_any
+                when Longident.last ident = "_" ->
+              raise (Found At_origin)
+            | Patt Tpat_var (_, str_loc)
+                when (Longident.last ident) = str_loc.txt ->
+              raise (Found At_origin)
+            | Patt Tpat_alias (_, _, str_loc)
+                when (Longident.last ident) = str_loc.txt ->
+              (* Assumption: if [Browse.enclosing] stopped on this node and not on the
+                subpattern, then it must mean that the cursor is on the alias. *)
+              raise (Found At_origin)
+            | _ ->
+              log ~title:"lookup" "lookup in value namespace" ;
+              let path, val_desc = Env.lookup_value ident env in
+              let ns_path = Namespaced_path.of_path ~namespace:`Vals path in
+              raise (Found (At (path, ns_path, val_desc.Types.val_loc)))
+            end
           | Labels ->
             log ~title:"lookup" "lookup in label namespace" ;
             let lbl =
@@ -691,7 +718,8 @@ end = struct
             in
             let path, loc = path_and_loc_from_label lbl env in
             (* TODO: Use [`Labels] here instead of [`Type] *)
-            raise (Found (path, Namespaced_path.of_path ~namespace:`Type path, loc))
+            let ns_path = Namespaced_path.of_path ~namespace:`Type path in
+            raise (Found (At (path, ns_path, loc)))
         with Not_found -> ()
       ) ;
       log ~title:"lookup" "   ... not in the environment" ;
@@ -704,7 +732,7 @@ end = struct
       let label_desc = Env.lookup_label ident env in
       let path, loc = path_and_loc_from_label label_desc env in
       (* TODO: Use [`Labels] here *)
-      Some (path, Namespaced_path.of_path ~namespace:`Type path, loc)
+      Some (At (path, Namespaced_path.of_path ~namespace:`Type path, loc))
     with Not_found ->
       None
 end
@@ -751,7 +779,8 @@ let from_longident ~config ~env ~lazy_trie ~pos ?namespaces ctxt ml_or_mli lid =
       Env_lookup.label ident env
   with
   | None -> `Not_in_env str_ident
-  | Some (path, tagged_path, loc) ->
+  | Some At_origin -> `At_origin
+  | Some At (path, tagged_path, loc) ->
     if Utils.is_builtin_path path then
       `Builtin
     else
@@ -777,14 +806,6 @@ let inspect_pattern ~pos ~lid p =
     (fun fmt -> Format.fprintf fmt "current pattern is: %a"
                   (Printtyped.pattern 0) p);
   match p.pat_desc with
-  | Tpat_any when Longident.last lid = "_" -> None
-  | Tpat_var (_, str_loc) when (Longident.last lid) = str_loc.txt ->
-    None
-  | Tpat_alias (_, _, str_loc)
-    when (Longident.last lid) = str_loc.txt ->
-    (* Assumption: if [Browse.enclosing] stopped on this node and not on the
-       subpattern, then it must mean that the cursor is on the alias. *)
-    None
   | Tpat_construct (lid_loc, cd, _)
     when cursor_on_constructor_name ~cursor:pos ~cstr_token:lid_loc cd
          && (Longident.last lid) = (Longident.last lid_loc.txt) ->
@@ -793,7 +814,7 @@ let inspect_pattern ~pos ~lid p =
        itself.  *)
       Some (Constructor cd)
   | _ ->
-    Some Patt
+    Some (Patt p.pat_desc)
 
 let inspect_expression ~pos ~lid e : Context.t =
   match e.Typedtree.exp_desc with
@@ -852,7 +873,8 @@ let from_string ~config ~env ~local_defs ~pos ?namespaces switch path =
     match
       from_longident ~config ~pos ?namespaces ~env ~lazy_trie ctxt switch lid
     with
-    | `File_not_found _ | `Not_found _ | `Not_in_env _ as err -> err
+    | `File_not_found _ | `Not_found _ | `Not_in_env _ | `At_origin as other ->
+      other
     | `Builtin -> `Builtin path
     | `Found (loc, _) ->
       match find_source ~config loc with
@@ -884,7 +906,16 @@ let get_doc ~config ~env ~local_defs ~comments ~pos =
         `Found ({ Location. loc_start=pos; loc_end=pos ; loc_ghost=true }, None)
       | Some ctxt ->
         log ~title:"get_doc" "looking for the doc of '%s'" path ;
-        from_longident ~config ~pos ~env ~lazy_trie ctxt `MLI lid
+        begin match from_longident ~config ~pos ~env ~lazy_trie ctxt `MLI lid
+        with
+        | `At_origin ->
+          `Found ({ Location. loc_start=pos; loc_end=pos ; loc_ghost=true }, None)
+        | `Builtin
+        | `File_not_found _
+        | `Found _
+        | `Not_found _
+        | `Not_in_env _ as other -> other
+        end
       end
   with
   | `Found (_, Some doc) ->
