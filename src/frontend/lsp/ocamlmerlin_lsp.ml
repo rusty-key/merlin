@@ -342,7 +342,8 @@ let on_request :
       match
         Locate.from_string
           ~config:(Mpipeline.final_config pipeline)
-          ~env ~local_defs ~pos `Type `MLI (Path.name path)
+          ~env ~local_defs ~pos ~namespaces:[Locate.Types] `MLI
+          (Path.name path)
       with
       | exception Env.Error _ -> None
       | `Found (path, lex_position) ->

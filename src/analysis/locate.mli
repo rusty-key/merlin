@@ -26,6 +26,14 @@
 
 )* }}} *)
 
+type namespace =
+  | Constructors
+  | Labels
+  | Modules
+  | Module_types
+  | Types
+  | Values
+
 val log : 'a Logger.printf
 
 val from_string
@@ -33,7 +41,7 @@ val from_string
   -> env:Env.t
   -> local_defs:Mtyper.typedtree
   -> pos:Lexing.position
-  -> [ `Any | `Type ]
+  -> ?namespaces:namespace list
   -> [ `ML | `MLI ]
   -> string
   -> [> `File_not_found of string

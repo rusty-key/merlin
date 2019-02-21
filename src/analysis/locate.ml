@@ -335,6 +335,31 @@ module Context = struct
     | Unknown -> "unknown"
 end
 
+type namespace =
+  | Constructors
+  | Labels
+  | Modules
+  | Module_types
+  | Types
+  | Values
+
+let namespaces_of_context ctx =
+  match ctx with
+  | Context.Type ->
+    [ Types; Modules; Module_types; Constructors; Labels; Values; ]
+  | Module_type ->
+    [ Module_types; Modules; Types; Constructors; Labels; Values ]
+  | (Expr | Patt) ->
+    [ Values ; Modules ; Module_types ; Constructors ; Labels ; Types ]
+  | Unknown ->
+    [ Values ; Types ; Constructors ; Modules ; Module_types ; Labels ]
+  | Label _ ->
+    [ Labels; Modules; ]
+  | Constructor _ ->
+    [ Constructors; Modules; ]
+  | Module_path  ->
+    [ Modules; ]
+
 exception Cmt_cache_store of Typedtrie.t
 
 let trie_of_cmt root =
@@ -608,9 +633,9 @@ let recover _ =
 
 module Env_lookup : sig
 
-  val with_context
-     : Context.t
-    -> [ `Any | `Type ]
+  val in_namespaces
+     : namespace list
+    -> Context.t
     -> Longident.t
     -> Env.t
     -> (Path.t * Namespaced_path.t * Location.t) option
@@ -622,54 +647,42 @@ module Env_lookup : sig
 
 end = struct
 
-  let namespaces : [ `Any | `Type ] -> Context.t -> _ = fun kind ctx ->
-    match kind, ctx with
-    | `Any, Type          -> [ `Type ; `Mod ; `Modtype ; `Constr ; `Labels ; `Vals ]
-    | `Any, Module_type   -> [ `Modtype ; `Mod ; `Type ; `Constr ; `Labels ; `Vals ]
-    | `Any, (Expr | Patt) -> [ `Vals ; `Mod ; `Modtype ; `Constr ; `Labels ; `Type ]
-    | `Any, Unknown       -> [ `Vals ; `Type ; `Constr ; `Mod ; `Modtype ; `Labels ]
-    | `Any, Label _       -> [ `Labels; `Mod ]
-    | `Any, Constructor _ -> [ `Constr; `Mod ]
-    | `Any, Module_path   -> [ `Mod ]
-    | `Type, (Type | Module_type | Expr | Patt | Unknown) -> [ `Type ]
-    | `Type, (Label _ | Constructor _ | Module_path) -> []
-
   exception Found of (Path.t * Namespaced_path.t * Location.t)
 
-  let with_context (ctxt : Context.t) kind ident env =
+  let in_namespaces namespaces ctxt ident env =
     try
-      List.iter (namespaces kind ctxt) ~f:(fun namespace ->
+      List.iter namespaces ~f:(fun namespace ->
         try
           match namespace with
-          | `Constr ->
+          | Constructors ->
             log ~title:"lookup" "lookup in constructor namespace" ;
             let cd =
               match ctxt with
-              | Constructor cd -> cd
+              | Context.Constructor cd -> cd
               | _ -> Env.lookup_constructor ident env
             in
             let path, loc = path_and_loc_of_cstr cd env in
             (* TODO: Use [`Constr] here instead of [`Type] *)
             raise (Found (path, Namespaced_path.of_path ~namespace:`Type path, loc))
-          | `Mod ->
+          | Modules ->
             log ~title:"lookup" "lookup in module namespace" ;
             let path = Env.lookup_module ~load:true ident env in
             let md = Env.find_module path env in
             raise (Found (path, Namespaced_path.of_path ~namespace:`Mod path, md.Types.md_loc))
-          | `Modtype ->
+          | Module_types ->
             log ~title:"lookup" "lookup in module type namespace" ;
             let path, mtd = Env.lookup_modtype ident env in
             raise (Found (path, Namespaced_path.of_path ~namespace:`Modtype path, mtd.Types.mtd_loc))
-          | `Type ->
+          | Types ->
             log ~title:"lookup" "lookup in type namespace" ;
             let path = Env.lookup_type ident env in
             let typ_decl = Env.find_type path env in
             raise (Found (path, Namespaced_path.of_path ~namespace:`Type path, typ_decl.Types.type_loc))
-          | `Vals ->
+          | Values ->
             log ~title:"lookup" "lookup in value namespace" ;
             let path, val_desc = Env.lookup_value ident env in
             raise (Found (path, Namespaced_path.of_path ~namespace:`Vals path, val_desc.Types.val_loc))
-          | `Labels ->
+          | Labels ->
             log ~title:"lookup" "lookup in label namespace" ;
             let lbl =
               match ctxt with
@@ -723,12 +736,17 @@ let from_completion_entry ~config ~lazy_trie ~pos (namespace, path, loc) =
   locate ~config ~ml_or_mli:`MLI ~path:tagged_path ~pos ~str_ident loc
     ~lazy_trie
 
-let from_longident ~config ~env ~lazy_trie ~pos ctxt kind ml_or_mli lid =
+let from_longident ~config ~env ~lazy_trie ~pos ?namespaces ctxt ml_or_mli lid =
   let ident, is_label = Longident.keep_suffix lid in
   let str_ident = String.concat ~sep:"." (Longident.flatten ident) in
   match
     if not is_label then
-      Env_lookup.with_context ctxt kind ident env
+      let namespaces =
+        match namespaces with
+        | None -> namespaces_of_context ctxt
+        | Some namespaces -> namespaces
+      in
+      Env_lookup.in_namespaces namespaces ctxt ident env
     else
       Env_lookup.label ident env
   with
@@ -817,7 +835,7 @@ let inspect_context browse lid pos : Context.t option =
     | _ ->
       Some Unknown
 
-let from_string ~config ~env ~local_defs ~pos kind switch path =
+let from_string ~config ~env ~local_defs ~pos ?namespaces switch path =
   let browse = Mbrowse.of_typedtree local_defs in
   let lazy_trie = lazy (Typedtrie.of_browses ~local_buffer:true
                           [Browse_tree.of_browse browse]) in
@@ -832,7 +850,7 @@ let from_string ~config ~env ~local_defs ~pos kind switch path =
       path (match switch with `ML -> ".ml" | `MLI -> ".mli") ;
     let_ref loadpath (Mconfig.cmt_path config) @@ fun () ->
     match
-      from_longident ~config ~pos ~env ~lazy_trie ctxt kind switch lid
+      from_longident ~config ~pos ?namespaces ~env ~lazy_trie ctxt switch lid
     with
     | `File_not_found _ | `Not_found _ | `Not_in_env _ as err -> err
     | `Builtin -> `Builtin path
@@ -866,7 +884,7 @@ let get_doc ~config ~env ~local_defs ~comments ~pos =
         `Found ({ Location. loc_start=pos; loc_end=pos ; loc_ghost=true }, None)
       | Some ctxt ->
         log ~title:"get_doc" "looking for the doc of '%s'" path ;
-        from_longident ~config ~pos ~env ~lazy_trie ctxt `Any `MLI lid
+        from_longident ~config ~pos ~env ~lazy_trie ctxt `MLI lid
       end
   with
   | `Found (_, Some doc) ->
