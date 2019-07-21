@@ -221,7 +221,7 @@ module WorkspaceEdit = struct
     in
     `Assoc changes
 
-  type documentChanges = TextDocumentEdit.t list [@@deriving to_yojson]
+  type documentChanges = TextDocumentEdit.t list [@@deriving yojson_of]
 
   (**
      Depending on the client capability
@@ -310,7 +310,7 @@ module PublishDiagnostics = struct
     | `Int 4 -> Ok Hint
     | _ -> Error "expected int"
 
-  type params = publishDiagnosticsParams [@@deriving yojson] [@@yojson.allow_extra_fields]
+  type params = publishDiagnosticsParams [@@deriving yojson]
 
   and publishDiagnosticsParams = {
     uri: documentUri;
@@ -481,7 +481,7 @@ module Completion = struct
       end
     | _ -> Error "invalid completion.kind: expected an integer"
 
-  type params = completionParams [@@deriving yojson] [@@yojson.allow_extra_fields]
+  type params = completionParams [@@deriving yojson]
 
   and completionParams = {
     textDocument: TextDocumentIdentifier.t;  (* the text document *)
@@ -522,7 +522,7 @@ end
 module Hover = struct
   type params =
     TextDocumentPositionParams.t
-    [@@deriving yojson] [@@yojson.allow_extra_fields]
+    [@@deriving yojson]
 
   and result = hoverResult option [@default None]
 
@@ -778,14 +778,14 @@ end
 
 (* Goto Definition request, method="textDocument/definition" *)
 module Definition = struct
-  type params = TextDocumentPositionParams.t [@@deriving yojson] [@@yojson.allow_extra_fields]
+  type params = TextDocumentPositionParams.t [@@deriving yojson]
 
   and result = DefinitionLocation.t list  (* wire: either a single one or an array *)
 end
 
 (* Goto Type Definition request, method="textDocument/typeDefinition" *)
 module TypeDefinition = struct
-  type params = TextDocumentPositionParams.t [@@deriving yojson] [@@yojson.allow_extra_fields]
+  type params = TextDocumentPositionParams.t [@@deriving yojson]
 
   and result = Location.t list  (* wire: either a single one or an array *)
 end
@@ -807,7 +807,7 @@ end
 
 (* DocumentHighlight request, method="textDocument/documentHighlight" *)
 module TextDocumentHighlight = struct
-  type params = TextDocumentPositionParams.t [@@deriving yojson] [@@yojson.allow_extra_fields]
+  type params = TextDocumentPositionParams.t [@@deriving yojson]
 
   and result = DocumentHighlight.t list (* wire: either a single one or an array *)
 end
@@ -1001,7 +1001,7 @@ module Rename = struct
                         appropriate message set. *)
   } [@@deriving yojson]
 
-  type result = WorkspaceEdit.t [@@deriving to_yojson]
+  type result = WorkspaceEdit.t [@@deriving yojson_of]
 end
 
 module DebugEcho = struct
@@ -1013,7 +1013,7 @@ module DebugEcho = struct
 end
 
 module DebugTextDocumentGet = struct
-  type params = TextDocumentPositionParams.t [@@deriving yojson] [@@yojson.allow_extra_fields]
+  type params = TextDocumentPositionParams.t [@@deriving yojson]
 
   type result = string option [@default None]
 

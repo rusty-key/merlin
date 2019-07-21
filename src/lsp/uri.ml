@@ -1,4 +1,4 @@
-type t = string [@@deriving yojson] [@@yojson.allow_extra_fields]
+type t = string [@@deriving yojson]
 
 let to_string uri = uri
 
