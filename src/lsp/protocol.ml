@@ -38,10 +38,10 @@ module MarkupKind = struct
     | Markdown -> `String "markdown"
 
   let t_of_yojson = function
-    | `String "plaintext" -> Ok Plaintext
-    | `String "markdown" -> Ok Markdown
-    | `String _ -> Ok Plaintext
-    | _ -> Error "invalid contentFormat"
+    | `String "plaintext" -> Plaintext
+    | `String "markdown" -> Markdown
+    | `String _ -> Plaintext
+    | _ -> failwith "TODO: invalid contentFormat"
 end
 
 module MarkupContent = struct
@@ -143,10 +143,10 @@ module DocumentHighlight = struct
     | Write -> `Int 3
 
   let kind_of_yojson = function
-    | `Int 1 -> Ok Text
-    | `Int 2 -> Ok Read
-    | `Int 3 -> Ok Write
-    | _ -> Error "expected int between 1 and 3"
+    | `Int 1 -> Text
+    | `Int 2 -> Read
+    | `Int 3 -> Write
+    | _ -> failwith "TODO: expected int between 1 and 3"
 
   type t = {
     range: range;
@@ -215,7 +215,7 @@ module WorkspaceEdit = struct
     let changes =
       List.map (fun (uri, edits) ->
         let uri = Uri.to_string uri in
-        let edits = `List (List.map TextEdit.to_yojson edits) in
+        let edits = `List (List.map TextEdit.yojson_of_t edits) in
         uri, edits
       ) changes
     in
@@ -241,7 +241,7 @@ module WorkspaceEdit = struct
   type t = {
     changes: changes option;
     documentChanges: documentChanges option;
-  } [@@deriving yojson] [@@yojson.allow_extra_fields]
+  } [@@deriving yojson_of] [@@yojson.allow_extra_fields]
 
   let empty = {
     changes = None;
@@ -286,10 +286,10 @@ module PublishDiagnostics = struct
     | NoCode -> `Null
 
   let diagnosticCode_of_yojson = function
-    | `Int v -> Ok (IntCode v)
-    | `String v -> Ok (StringCode v)
-    | `Null -> Ok NoCode
-    | _ -> Error "invalid diagnostic.code"
+    | `Int v -> (IntCode v)
+    | `String v -> (StringCode v)
+    | `Null -> NoCode
+    | _ -> failwith "TODO: invalid diagnostic.code"
 
   type diagnosticSeverity =
     | Error (* 1 *)
@@ -304,11 +304,11 @@ module PublishDiagnostics = struct
     | Hint -> `Int 4
 
   let diagnosticSeverity_of_yojson = function
-    | `Int 1 -> Ok Error
-    | `Int 2 -> Ok Warning
-    | `Int 3 -> Ok Information
-    | `Int 4 -> Ok Hint
-    | _ -> Error "expected int"
+    | `Int 1 -> Error
+    | `Int 2 -> Warning
+    | `Int 3 -> Information
+    | `Int 4 -> Hint
+    | _ -> failwith "TODO: expected int"
 
   type params = publishDiagnosticsParams [@@deriving yojson]
 
@@ -350,10 +350,10 @@ module Completion = struct
     | TriggerForIncompleteCompletions -> `Int 3
 
   let completionTriggerKind_of_yojson = function
-    | `Int 1 -> Ok Invoked
-    | `Int 2 -> Ok TriggerCharacter
-    | `Int 3 -> Ok TriggerForIncompleteCompletions
-    | _ -> Error "invalid completion.triggerKind"
+    | `Int 1 -> Invoked
+    | `Int 2 -> TriggerCharacter
+    | `Int 3 -> TriggerForIncompleteCompletions
+    | _ -> failwith "TODO: invalid completion.triggerKind"
 
   type completionItemKind =
     | Text (* 1 *)
@@ -447,10 +447,10 @@ module Completion = struct
   let completionItemKind_of_yojson = function
     | `Int v ->
       begin match completionItemKind_of_int_opt v with
-      | Some v -> Ok v
-      | None -> Error "invalid completion.kind"
+      | Some v -> v
+      | None -> failwith "TODO: invalid completion.kind"
       end
-    | _ -> Error "invalid completion.kind: expected an integer"
+    | _ -> failwith "TODO: invalid completion.kind: expected an integer"
 
     (** Keep this in sync with `int_of_completionItemKind`. *)
   type insertTextFormat =
@@ -476,10 +476,10 @@ module Completion = struct
   let insertTextFormat_of_yojson = function
     | `Int v ->
       begin match insertFormat_of_int_opt v with
-      | Some v -> Ok v
-      | None -> Error "invalid completion.kind"
+      | Some v -> v
+      | None -> failwith "TODO: invalid completion.kind"
       end
-    | _ -> Error "invalid completion.kind: expected an integer"
+    | _ -> failwith "TODO: invalid completion.kind: expected an integer"
 
   type params = completionParams [@@deriving yojson]
 
@@ -546,10 +546,10 @@ module Initialize = struct
     | Verbose -> `String "verbose"
 
   let trace_of_yojson = function
-    | `String "off" -> Ok Off
-    | `String "messages" -> Ok Messages
-    | `String "verbose" -> Ok Verbose
-    | _ -> Error "invalid trace"
+    | `String "off" -> Off
+    | `String "messages" -> Messages
+    | `String "verbose" -> Verbose
+    | _ -> failwith "TODO: invalid trace"
 
   type textDocumentSyncKind =
     | NoSync (* 0 *)  (* docs should not be synced at all. Wire "None" *)
@@ -562,10 +562,10 @@ module Initialize = struct
     | IncrementalSync -> `Int 2
 
   let textDocumentSyncKind_of_yojson = function
-    | `Int 0 -> Ok NoSync
-    | `Int 1 -> Ok FullSync
-    | `Int 2 -> Ok IncrementalSync
-    | _ -> Error "invalid textDocumentSyncKind"
+    | `Int 0 -> NoSync
+    | `Int 1 -> FullSync
+    | `Int 2 -> IncrementalSync
+    | _ -> failwith "TODO: invalid textDocumentSyncKind"
 
   (* synchronization capabilities say what messages the client is capable
    * of sending, should be be so asked by the server.
@@ -871,33 +871,33 @@ module SymbolKind = struct
     | TypeParameter -> `Int 26
 
   let t_of_yojson = function
-    | `Int 1 -> Ok File
-    | `Int 2 -> Ok Module
-    | `Int 3 -> Ok Namespace
-    | `Int 4 -> Ok Package
-    | `Int 5 -> Ok Class
-    | `Int 6 -> Ok Method
-    | `Int 7 -> Ok Property
-    | `Int 8 -> Ok Field
-    | `Int 9 -> Ok Constructor
-    | `Int 10 -> Ok Enum
-    | `Int 11 -> Ok Interface
-    | `Int 12 -> Ok Function
-    | `Int 13 -> Ok Variable
-    | `Int 14 -> Ok Constant
-    | `Int 15 -> Ok String
-    | `Int 16 -> Ok Number
-    | `Int 17 -> Ok Boolean
-    | `Int 18 -> Ok Array
-    | `Int 19 -> Ok Object
-    | `Int 20 -> Ok Key
-    | `Int 21 -> Ok Null
-    | `Int 22 -> Ok EnumMember
-    | `Int 23 -> Ok Struct
-    | `Int 24 -> Ok Event
-    | `Int 25 -> Ok Operator
-    | `Int 26 -> Ok TypeParameter
-    | _ -> Error "invalid SymbolKind"
+    | `Int 1 -> File
+    | `Int 2 -> Module
+    | `Int 3 -> Namespace
+    | `Int 4 -> Package
+    | `Int 5 -> Class
+    | `Int 6 -> Method
+    | `Int 7 -> Property
+    | `Int 8 -> Field
+    | `Int 9 -> Constructor
+    | `Int 10 -> Enum
+    | `Int 11 -> Interface
+    | `Int 12 -> Function
+    | `Int 13 -> Variable
+    | `Int 14 -> Constant
+    | `Int 15 -> String
+    | `Int 16 -> Number
+    | `Int 17 -> Boolean
+    | `Int 18 -> Array
+    | `Int 19 -> Object
+    | `Int 20 -> Key
+    | `Int 21 -> Null
+    | `Int 22 -> EnumMember
+    | `Int 23 -> Struct
+    | `Int 24 -> Event
+    | `Int 25 -> Operator
+    | `Int 26 -> TypeParameter
+    | _ -> failwith "TODO: invalid SymbolKind"
 
 end
 
@@ -971,9 +971,9 @@ module TextDocumentDocumentSymbol = struct
 
   let yojson_of_result = function
     | DocumentSymbol symbols ->
-      `List (Std.List.map symbols ~f:DocumentSymbol.to_yojson)
+      `List (Std.List.map symbols ~f:DocumentSymbol.yojson_of_t)
     | SymbolInformation symbols ->
-      `List (Std.List.map symbols ~f:SymbolInformation.to_yojson)
+      `List (Std.List.map symbols ~f:SymbolInformation.yojson_of_t)
 
 end
 
