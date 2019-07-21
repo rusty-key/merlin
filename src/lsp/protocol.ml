@@ -14,12 +14,12 @@ type zero_based_int = int [@@deriving yojson]
 type position = {
   line: zero_based_int;
   character: zero_based_int;
-} [@@deriving yojson { strict = false }]
+} [@@deriving yojson] [@@yojson.allow_extra_fields]
 
 type range = {
   start_: position [@key "start"];
   end_: position [@key "end"];
-} [@@deriving yojson { strict = false }]
+} [@@deriving yojson] [@@yojson.allow_extra_fields]
 
 module Command = struct
   type t = {
@@ -48,14 +48,14 @@ module MarkupContent = struct
   type t = {
     value: string;
     kind: MarkupKind.t;
-  } [@@deriving yojson { strict = false }]
+  } [@@deriving yojson] [@@yojson.allow_extra_fields]
 end
 
 module Location = struct
   type t = {
     uri: Uri.t;
     range : range;
-  } [@@deriving yojson { strict = false }]
+  } [@@deriving yojson] [@@yojson.allow_extra_fields]
 end
 
 module DefinitionLocation = struct
@@ -63,14 +63,14 @@ module DefinitionLocation = struct
     uri: Uri.t;
     range : range;
     title: string option [@default None];
-  } [@@deriving yojson { strict = false }]
+  } [@@deriving yojson] [@@yojson.allow_extra_fields]
 end
 
 (* Text documents are identified using a URI. *)
 module TextDocumentIdentifier = struct
   type t = {
     uri: documentUri;  (* the text document's URI *)
-  } [@@deriving yojson { strict = false }]
+  } [@@deriving yojson] [@@yojson.allow_extra_fields]
 end
 
 (* An identifier to denote a specific version of a text document. *)
@@ -78,7 +78,7 @@ module VersionedTextDocumentIdentifier = struct
   type t = {
     uri: documentUri;  (* the text document's URI *)
     version: int;  (* the version number of this document *)
-  } [@@deriving yojson { strict = false }]
+  } [@@deriving yojson] [@@yojson.allow_extra_fields]
 end
 
 (* An item to transfer a text document from the client to the server. The
@@ -89,12 +89,12 @@ module TextDocumentItem = struct
     languageId: string;  (* the text document's language identifier *)
     version: int;  (* the version of the document *)
     text: string;  (* the content of the opened text document *)
-  } [@@deriving yojson { strict = false }]
+  } [@@deriving yojson] [@@yojson.allow_extra_fields]
 end
 
 (* DidOpenTextDocument notification, method="textDocument/didOpen" *)
 module DidOpen = struct
-  type params = didOpenTextDocumentParams [@@deriving yojson { strict = false }]
+  type params = didOpenTextDocumentParams [@@deriving yojson]
 
   and didOpenTextDocumentParams = {
     textDocument: TextDocumentItem.t;  (* the document that was opened *)
@@ -103,7 +103,7 @@ end
 
 (* DidChangeTextDocument notification, method="textDocument/didChange" *)
 module DidChange = struct
-  type params = didChangeTextDocumentParams [@@deriving yojson { strict = true }]
+  type params = didChangeTextDocumentParams [@@deriving yojson]
 
   and didChangeTextDocumentParams = {
     textDocument: VersionedTextDocumentIdentifier.t;
@@ -121,7 +121,7 @@ module TextDocumentPositionParams = struct
   type t = {
     textDocument: TextDocumentIdentifier.t;  (* the text document *)
     position: position;  (* the position inside the text document *)
-  } [@@deriving yojson { strict = false }]
+  } [@@deriving yojson] [@@yojson.allow_extra_fields]
 end
 
 (**
@@ -151,7 +151,7 @@ module DocumentHighlight = struct
   type t = {
     range: range;
     kind: kind option;
-  } [@@deriving yojson { strict = false }]
+  } [@@deriving yojson] [@@yojson.allow_extra_fields]
 
 end
 
@@ -175,7 +175,7 @@ module TextEdit = struct
     range: range;
     (** The string to be inserted. For delete operations use an empty string. *)
     newText: string;
-  } [@@deriving yojson { strict = false }]
+  } [@@deriving yojson] [@@yojson.allow_extra_fields]
 end
 
 
@@ -192,7 +192,7 @@ module TextDocumentEdit = struct
   type t = {
     textDocument: VersionedTextDocumentIdentifier.t; (** The text document to change. *)
     edits: TextEdit.t list; (** The edits to be applied. *)
-  } [@@deriving yojson { strict = false }]
+  } [@@deriving yojson] [@@yojson.allow_extra_fields]
 end
 
 (**
@@ -241,7 +241,7 @@ module WorkspaceEdit = struct
   type t = {
     changes: changes option;
     documentChanges: documentChanges option;
-  } [@@deriving to_yojson { strict = false }]
+  } [@@deriving yojson] [@@yojson.allow_extra_fields]
 
   let empty = {
     changes = None;
@@ -310,7 +310,7 @@ module PublishDiagnostics = struct
     | `Int 4 -> Ok Hint
     | _ -> Error "expected int"
 
-  type params = publishDiagnosticsParams [@@deriving yojson { strict = false }]
+  type params = publishDiagnosticsParams [@@deriving yojson] [@@yojson.allow_extra_fields]
 
   and publishDiagnosticsParams = {
     uri: documentUri;
@@ -481,7 +481,7 @@ module Completion = struct
       end
     | _ -> Error "invalid completion.kind: expected an integer"
 
-  type params = completionParams [@@deriving yojson { strict = false }]
+  type params = completionParams [@@deriving yojson] [@@yojson.allow_extra_fields]
 
   and completionParams = {
     textDocument: TextDocumentIdentifier.t;  (* the text document *)
@@ -522,7 +522,7 @@ end
 module Hover = struct
   type params =
     TextDocumentPositionParams.t
-    [@@deriving yojson { strict = false }]
+    [@@deriving yojson] [@@yojson.allow_extra_fields]
 
   and result = hoverResult option [@default None]
 
@@ -575,7 +575,7 @@ module Initialize = struct
     willSave: bool [@default false];  (* client can send textDocument/willSave *)
     willSaveWaitUntil: bool [@default false];  (* textDoc.../willSaveWaitUntil *)
     didSave: bool [@default false];  (* textDocument/didSave *)
-  } [@@deriving yojson { strict = false }]
+  } [@@deriving yojson] [@@yojson.allow_extra_fields]
 
   let synchronization_empty = {
     willSave = true;
@@ -585,7 +585,7 @@ module Initialize = struct
 
   type completionItem = {
     snippetSupport: bool [@default false];  (* client can do snippets as insert text *)
-  } [@@deriving yojson { strict = false }]
+  } [@@deriving yojson] [@@yojson.allow_extra_fields]
 
   let completionItem_empty = {
     snippetSupport = false;
@@ -593,7 +593,7 @@ module Initialize = struct
 
   type completion = {
     completionItem: completionItem [@default completionItem_empty];
-  } [@@deriving yojson { strict = false }]
+  } [@@deriving yojson] [@@yojson.allow_extra_fields]
 
   let completion_empty = {
     completionItem = completionItem_empty;
@@ -601,7 +601,7 @@ module Initialize = struct
 
   type hover = {
     contentFormat: MarkupKind.t list [@default [Plaintext]];
-  } [@@deriving yojson { strict = false }]
+  } [@@deriving yojson] [@@yojson.allow_extra_fields]
 
   let hover_empty = {
     contentFormat = [Plaintext];
@@ -609,7 +609,7 @@ module Initialize = struct
 
   type documentSymbol = {
     hierarchicalDocumentSymbolSupport : bool [@default false];
-  } [@@deriving yojson { strict = false }]
+  } [@@deriving yojson] [@@yojson.allow_extra_fields]
 
   let documentSymbol_empty = {
     hierarchicalDocumentSymbolSupport = false;
@@ -624,7 +624,7 @@ module Initialize = struct
     (** textDocument/hover *)
     hover: hover [@default hover_empty];
     (* omitted: dynamic-registration fields *)
-  } [@@deriving yojson { strict = false }]
+  } [@@deriving yojson] [@@yojson.allow_extra_fields]
 
   let textDocumentClientCapabilities_empty = {
     completion = completion_empty;
@@ -636,7 +636,7 @@ module Initialize = struct
   type workspaceEdit = {
     (** client supports versioned doc changes *)
     documentChanges: bool [@default false];
-  } [@@deriving yojson { strict = false }]
+  } [@@deriving yojson] [@@yojson.allow_extra_fields]
 
   let workspaceEdit_empty = {
     documentChanges = false;
@@ -647,7 +647,7 @@ module Initialize = struct
     applyEdit: bool [@default false];
     workspaceEdit: workspaceEdit [@default workspaceEdit_empty];
     (** omitted: dynamic-registration fields *)
-  } [@@deriving yojson { strict = false }]
+  } [@@deriving yojson] [@@yojson.allow_extra_fields]
 
   let workspaceClientCapabilities_empty = {
     applyEdit = false;
@@ -661,7 +661,7 @@ module Initialize = struct
     progress: bool [@default false];
     (* Nuclide-specific: client supports window/actionRequired *)
     actionRequired: bool [@default false];
-  } [@@deriving yojson { strict = false }]
+  } [@@deriving yojson] [@@yojson.allow_extra_fields]
 
   let windowClientCapabilities_empty = {
     status = true;
@@ -672,7 +672,7 @@ module Initialize = struct
   type telemetryClientCapabilities = {
     (* Nuclide-specific: client supports telemetry/connectionStatus *)
     connectionStatus: bool [@default false];
-  } [@@deriving yojson { strict = false }]
+  } [@@deriving yojson] [@@yojson.allow_extra_fields]
 
   let telemetryClientCapabilities_empty = {
     connectionStatus = true;
@@ -684,7 +684,7 @@ module Initialize = struct
     window: windowClientCapabilities [@default windowClientCapabilities_empty];
     telemetry: telemetryClientCapabilities [@default telemetryClientCapabilities_empty];
     (* omitted: experimental *)
-  } [@@deriving yojson { strict = false }]
+  } [@@deriving yojson] [@@yojson.allow_extra_fields]
 
   let client_capabilities_empty = {
     workspace = workspaceClientCapabilities_empty;
@@ -699,7 +699,7 @@ module Initialize = struct
     rootUri: documentUri option [@default None];  (* the root URI of the workspace *)
     client_capabilities: client_capabilities [@key "capabilities"] [@default client_capabilities_empty];
     trace: trace [@default Off];  (* the initial trace setting, default="off" *)
-  } [@@deriving yojson { strict = false }]
+  } [@@deriving yojson] [@@yojson.allow_extra_fields]
 
   and result = {
     server_capabilities: server_capabilities [@key "capabilities"];
@@ -778,14 +778,14 @@ end
 
 (* Goto Definition request, method="textDocument/definition" *)
 module Definition = struct
-  type params = TextDocumentPositionParams.t [@@deriving yojson { strict = false }]
+  type params = TextDocumentPositionParams.t [@@deriving yojson] [@@yojson.allow_extra_fields]
 
   and result = DefinitionLocation.t list  (* wire: either a single one or an array *)
 end
 
 (* Goto Type Definition request, method="textDocument/typeDefinition" *)
 module TypeDefinition = struct
-  type params = TextDocumentPositionParams.t [@@deriving yojson { strict = false }]
+  type params = TextDocumentPositionParams.t [@@deriving yojson] [@@yojson.allow_extra_fields]
 
   and result = Location.t list  (* wire: either a single one or an array *)
 end
@@ -796,7 +796,7 @@ module References = struct
     textDocument: TextDocumentIdentifier.t;  (* the text document *)
     position: position;  (* the position inside the text document *)
     context: referenceContext;
-  } [@@deriving yojson { strict = false }]
+  } [@@deriving yojson] [@@yojson.allow_extra_fields]
 
   and referenceContext = {
     includeDeclaration: bool;
@@ -807,7 +807,7 @@ end
 
 (* DocumentHighlight request, method="textDocument/documentHighlight" *)
 module TextDocumentHighlight = struct
-  type params = TextDocumentPositionParams.t [@@deriving yojson { strict = false }]
+  type params = TextDocumentPositionParams.t [@@deriving yojson] [@@yojson.allow_extra_fields]
 
   and result = DocumentHighlight.t list (* wire: either a single one or an array *)
 end
@@ -1007,13 +1007,13 @@ end
 module DebugEcho = struct
   type params = {
     message: string;
-  } [@@deriving yojson { strict = false }]
+  } [@@deriving yojson] [@@yojson.allow_extra_fields]
 
   and result = params
 end
 
 module DebugTextDocumentGet = struct
-  type params = TextDocumentPositionParams.t [@@deriving yojson { strict = false }]
+  type params = TextDocumentPositionParams.t [@@deriving yojson] [@@yojson.allow_extra_fields]
 
   type result = string option [@default None]
 

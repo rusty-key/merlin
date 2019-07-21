@@ -80,7 +80,7 @@ module Packet = struct
     id: int option [@default None];
     method_: string [@key "method"];
     params: Yojson.Safe.json;
-  } [@@deriving yojson { strict = false }]
+  } [@@deriving yojson] [@@yojson.allow_extra_fields]
 end
 
 let read rpc =
@@ -154,7 +154,7 @@ let send_response rpc (response : Response.t) =
   send rpc json
 
 module Server_notification = struct
-  open Protocol 
+  open Protocol
 
   type t =
     | PublishDiagnostics of PublishDiagnostics.params
