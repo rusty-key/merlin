@@ -33,11 +33,11 @@ module MarkupKind = struct
     | Plaintext
     | Markdown
 
-  let to_yojson = function
+  let yojson_of_t = function
     | Plaintext -> `String "plaintext"
     | Markdown -> `String "markdown"
 
-  let of_yojson = function
+  let t_of_yojson = function
     | `String "plaintext" -> Ok Plaintext
     | `String "markdown" -> Ok Markdown
     | `String _ -> Ok Plaintext
@@ -137,7 +137,7 @@ module DocumentHighlight = struct
     | Read (** 2: Read-access of a symbol, like reading a variable. *)
     | Write (** 3: Write-access of a symbol, like writing a variable. *)
 
-  let kind_to_yojson = function
+  let yojson_of_kind = function
     | Text -> `Int 1
     | Read -> `Int 2
     | Write -> `Int 3
@@ -211,7 +211,7 @@ module WorkspaceEdit = struct
   *)
   type changes = (documentUri * TextEdit.t list) list
 
-  let changes_to_yojson changes =
+  let yojson_of_changes changes =
     let changes =
       List.map (fun (uri, edits) ->
         let uri = Uri.to_string uri in
@@ -280,7 +280,7 @@ module PublishDiagnostics = struct
     | StringCode of string
     | NoCode
 
-  let diagnosticCode_to_yojson = function
+  let yojson_of_diagnosticCode = function
     | IntCode v -> `Int v
     | StringCode v -> `String v
     | NoCode -> `Null
@@ -297,7 +297,7 @@ module PublishDiagnostics = struct
     | Information (* 3 *)
     | Hint (* 4 *)
 
-  let diagnosticSeverity_to_yojson = function
+  let yojson_of_diagnosticSeverity = function
     | Error -> `Int 1
     | Warning -> `Int 2
     | Information -> `Int 3
@@ -344,7 +344,7 @@ module Completion = struct
     | TriggerCharacter (* 2 *)
     | TriggerForIncompleteCompletions (* 3 *)
 
-  let completionTriggerKind_to_yojson = function
+  let yojson_of_completionTriggerKind = function
     | Invoked -> `Int 1
     | TriggerCharacter -> `Int 2
     | TriggerForIncompleteCompletions -> `Int 3
@@ -411,7 +411,7 @@ module Completion = struct
     | Operator -> 24
     | TypeParameter -> 25
 
-  let completionItemKind_to_yojson v =
+  let yojson_of_completionItemKind v =
     `Int (int_of_completionItemKind v)
 
   (** Once we get better PPX support we can use [@@deriving enum].
@@ -463,7 +463,7 @@ module Completion = struct
     | PlainText -> 1
     | SnippetFormat -> 2
 
-  let insertTextFormat_to_yojson v =
+  let yojson_of_insertTextFormat v =
     `Int (int_of_insertFormat v)
 
   (** Once we get better PPX support we can use [@@deriving enum].
@@ -540,7 +540,7 @@ module Initialize = struct
     | Messages
     | Verbose
 
-  let trace_to_yojson = function
+  let yojson_of_trace = function
     | Off -> `String "off"
     | Messages -> `String "messages"
     | Verbose -> `String "verbose"
@@ -556,7 +556,7 @@ module Initialize = struct
     | FullSync (* 1 *)  (* synced by always sending full content. Wire "Full" *)
     | IncrementalSync (* 2 *)  (* full only on open. Wire "Incremental" *)
 
-  let textDocumentSyncKind_to_yojson = function
+  let yojson_of_textDocumentSyncKind = function
     | NoSync -> `Int 0
     | FullSync -> `Int 1
     | IncrementalSync -> `Int 2
@@ -842,7 +842,7 @@ module SymbolKind = struct
     | Operator (* 25 *)
     | TypeParameter (* 26 *)
 
-  let to_yojson = function
+  let yojson_of_t = function
     | File -> `Int 1
     | Module -> `Int 2
     | Namespace -> `Int 3
@@ -870,7 +870,7 @@ module SymbolKind = struct
     | Operator -> `Int 25
     | TypeParameter -> `Int 26
 
-  let of_yojson = function
+  let t_of_yojson = function
     | `Int 1 -> Ok File
     | `Int 2 -> Ok Module
     | `Int 3 -> Ok Namespace
@@ -969,7 +969,7 @@ module TextDocumentDocumentSymbol = struct
     | DocumentSymbol of DocumentSymbol.t list
     | SymbolInformation of SymbolInformation.t list
 
-  let result_to_yojson = function
+  let yojson_of_result = function
     | DocumentSymbol symbols ->
       `List (Std.List.map symbols ~f:DocumentSymbol.to_yojson)
     | SymbolInformation symbols ->
@@ -1017,7 +1017,7 @@ module DebugTextDocumentGet = struct
 
   type result = string option [@default None]
 
-  let result_to_yojson = function
+  let yojson_of_result = function
     | Some s -> `String s
     | None -> `Null
 end

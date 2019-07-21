@@ -162,14 +162,14 @@ module Server_notification = struct
   let method_ = function
     | PublishDiagnostics _ -> "textDocument/publishDiagnostics"
 
-  let params_to_yojson = function
+  let yojson_of_params = function
     | PublishDiagnostics params -> PublishDiagnostics.params_to_yojson params
 
 end
 
 let send_notification rpc notif =
   let method_ = Server_notification.method_ notif in
-  let params = Server_notification.params_to_yojson notif in
+  let yojson_of_params = Server_notification.params notif in
   let response = `Assoc [("jsonrpc", (`String "2.0")); ("method", (`String method_)); ("params", params)] in
   send rpc response
 
@@ -206,37 +206,37 @@ module Request = struct
     match req, result with
     | Shutdown, _resp -> None
     | TextDocumentHover _, result ->
-      let json = Hover.result_to_yojson result in
+      let yojson_of_json = Hover.result result in
       Some (Response.make id json)
     | TextDocumentDefinition _, result ->
-      let json = Definition.result_to_yojson result in
+      let yojson_of_json = Definition.result result in
       Some (Response.make id json)
     | TextDocumentTypeDefinition _, result ->
-      let json = TypeDefinition.result_to_yojson result in
+      let yojson_of_json = TypeDefinition.result result in
       Some (Response.make id json)
     | TextDocumentCompletion _, result ->
-      let json = Completion.result_to_yojson result in
+      let yojson_of_json = Completion.result result in
       Some (Response.make id json)
     | TextDocumentCodeLens _, result ->
-      let json = CodeLens.result_to_yojson result in
+      let yojson_of_json = CodeLens.result result in
       Some (Response.make id json)
     | TextDocumentRename _, result ->
-      let json = Rename.result_to_yojson result in
+      let yojson_of_json = Rename.result result in
       Some (Response.make id json)
     | DocumentSymbol _, result ->
-      let json = TextDocumentDocumentSymbol.result_to_yojson result in
+      let yojson_of_json = TextDocumentDocumentSymbol.result result in
       Some (Response.make id json)
     | DebugEcho _, result ->
-      let json = DebugEcho.result_to_yojson result in
+      let yojson_of_json = DebugEcho.result result in
       Some (Response.make id json)
     | DebugTextDocumentGet _, result ->
-      let json = DebugTextDocumentGet.result_to_yojson result in
+      let yojson_of_json = DebugTextDocumentGet.result result in
       Some (Response.make id json)
     | TextDocumentReferences _, result ->
-      let json = References.result_to_yojson result in
+      let yojson_of_json = References.result result in
       Some (Response.make id json)
     | TextDocumentHighlight _, result ->
-      let json = TextDocumentHighlight.result_to_yojson result in
+      let yojson_of_json = TextDocumentHighlight.result result in
       Some (Response.make id json)
     | UnknownRequest _, _resp -> None
 end
@@ -364,7 +364,7 @@ let start init_state handler ic oc =
           read_message rpc >>= function
           | Message.Initialize (id, params) ->
             handler.on_initialize rpc state params >>= fun (next_state, result) ->
-            let json = Protocol.Initialize.result_to_yojson result in
+            let yojson_of_json = Protocol.Initialize.result result in
             let response = Response.make id json in
             rpc.state <- Initialized params.client_capabilities;
             send_response rpc response;
