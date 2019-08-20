@@ -1,4 +1,20 @@
-type t = string [@@deriving yojson]
+type t = string
+[@@deriving_inline yojson]
+let _ = fun (_ : t) -> ()
+let t_of_yojson = (string_of_yojson : Ppx_yojson_conv_lib.Yojson.Safe.t -> t)
+let _ = t_of_yojson
+let t_of_yojson' =
+  (let _tp_loc = "src/lsp/uri.ml.t" in
+   fun yojson ->
+     Ppx_yojson_conv_lib.Yojson_conv.Result.pack
+       (fun yojson -> t_of_yojson yojson) yojson : Ppx_yojson_conv_lib.Yojson.Safe.t
+                                                     ->
+                                                     t
+                                                       Ppx_yojson_conv_lib.Yojson_conv.Result.t)
+let _ = t_of_yojson'
+let yojson_of_t = (yojson_of_string : t -> Ppx_yojson_conv_lib.Yojson.Safe.t)
+let _ = yojson_of_t
+[@@@end]
 
 let to_string uri = uri
 

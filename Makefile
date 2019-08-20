@@ -1,7 +1,7 @@
 all: build ocamlmerlin ocamlmerlin-server ocamlmerlin-lsp
 
 build:
-	dune build
+	dune build --auto-promote
 
 workspace:
 	dune build --workspace=dune-workspace.template merlin.install

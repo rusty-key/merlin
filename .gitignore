@@ -7,6 +7,9 @@ dune-workspace
 *.pyc
 *.cmly
 
+_esy
+node_modules
+
 ocamlmerlin
 ocamlmerlin-server
 ocamlmerlin-lsp

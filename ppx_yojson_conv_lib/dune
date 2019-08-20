@@ -1,0 +1,5 @@
+(library (name ppx_yojson_conv_lib) 
+ (libraries yojson result)
+ (flags (:standard "-open" "Result"))
+ (preprocess no_preprocessing)
+)
