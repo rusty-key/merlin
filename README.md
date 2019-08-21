@@ -1,5 +1,5 @@
-Experimental merlin-lsp build for OCaml 4.02, 4.07, 4.08
-========================================================
+Experimental merlin-lsp build for OCaml 4.02, 4.06, 4.07, 4.08
+==============================================================
 
 **This is a total experiment & not even remotely ready yet!**
 
@@ -13,6 +13,8 @@ Quickstart
   $ npm i -g esy@0.5.8 # skip if already installed
   $ esy @ocaml-4.02 i
   $ esy @ocaml-4.02 dune build -p merlin-lsp
+  $ esy @ocaml-4.06 i
+  $ esy @ocaml-4.06 dune build -p merlin-lsp
   $ esy @ocaml-4.07 i
   $ esy @ocaml-4.07 dune build -p merlin-lsp
   $ esy @ocaml-4.08 i
@@ -25,7 +27,7 @@ Hacks
 This repository contains bunch of hacks/additions to be resolved, specifically:
 
 - `[@@deriving]` was replaced with `[@@deriving_inline]` and code was generated
-  using the OCaml 4.07
+  using OCaml 4.07
 - [ppx_yojson_conv.runtime-lib](https://github.com/janestreet/ppx_yojson_conv/blob/master/runtime-lib) is vendored in `ppx_yojson_conv_lib`/`Ppx_yojson_conv_lib.opam`
 - the point above is only needed for **4.02**
 - the `preprocess` stanza is removed from the `src/lsp/dune`, so there is no
