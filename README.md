@@ -6,11 +6,19 @@ Experimental merlin-lsp build for OCaml 4.02, 4.06, 4.07, 4.08
 This uses [esy](https://esy.sh) for dependency management & OCaml version
 switching.
 
+The main idea behind these modifications is using `ppx_yojson_conv` and
+`[@@deriving_inline yojson]` instead of `[@@deriving yojson]`. This permits us
+to pre-generate the required converters in development using the newer OCaml
+version (4.07 or 4.08) and the build the code as is using the older ones (4.02 & 4.03).
+
 Quickstart
 ----------
 
 ```bash
   $ npm i -g esy@0.5.8 # skip if already installed
+  $ esy @ocaml-4.08 i
+  $ esy @ocaml-4.08 dune build @lint --auto-promote -p merlin-lsp # generate converters in development
+  $ # build them all!
   $ esy @ocaml-4.02 i
   $ esy @ocaml-4.02 dune build -p merlin-lsp
   $ esy @ocaml-4.06 i
@@ -21,21 +29,15 @@ Quickstart
   $ esy @ocaml-4.08 dune build -p merlin-lsp
 ```
 
-Hacks
------
+Open Questions
+--------------
 
-This repository contains bunch of hacks/additions to be resolved, specifically:
-
-- `[@@deriving]` was replaced with `[@@deriving_inline]` and code was generated
-  using OCaml 4.07
-- [ppx_yojson_conv.runtime-lib](https://github.com/janestreet/ppx_yojson_conv/blob/master/runtime-lib) is vendored in `ppx_yojson_conv_lib`/`Ppx_yojson_conv_lib.opam`
-- the point above is only needed for **4.02**
-- the `preprocess` stanza is removed from the `src/lsp/dune`, so there is no
-  way to auto-generate needed code at the moment (perhaps to be resolved by the
-  conditional compilation)
-- few fixes through out the code for backward compatibility (`String.equals`
-  vs. `String.compare`)
-- `result` library & `-open Result` is used for backward compatibility as well
+- Currently
+  [ppx_yojson_conv.runtime-lib](https://github.com/janestreet/ppx_yojson_conv/blob/master/runtime-lib)
+  is vendored in this repo as `ppx_yojson_conv_lib`/`Ppx_yojson_conv_lib.opam`.
+  This is only needed for **4.02** & **4.03** since we cannot afford normal
+  `ppx_yojson_conv` dependency because of the `ocaml >=4.04` requirement. What
+  would be the proper/idiomatic way of resolving this?
 
 
 
