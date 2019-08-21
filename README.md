@@ -1,5 +1,5 @@
-Experimental merlin-lsp build for OCaml 4.02 & 4.07
-===================================================
+Experimental merlin-lsp build for OCaml 4.02, 4.07, 4.08
+========================================================
 
 **This is a total experiment & not even remotely ready yet!**
 
@@ -15,6 +15,8 @@ Quickstart
   $ esy @ocaml-4.02 dune build -p merlin-lsp
   $ esy @ocaml-4.07 i
   $ esy @ocaml-4.07 dune build -p merlin-lsp
+  $ esy @ocaml-4.08 i
+  $ esy @ocaml-4.08 dune build -p merlin-lsp
 ```
 
 Hacks
