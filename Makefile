@@ -6,9 +6,6 @@ build:
 workspace:
 	dune build --always-show-command-line --workspace=dune-workspace.template
 
-ocamlmerlin ocamlmerlin-server:
-	ln -s _build/install/default/bin/$@ ./$@
-
 clean:
 	dune clean
 
