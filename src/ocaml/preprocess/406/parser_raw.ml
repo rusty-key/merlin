@@ -2,8 +2,8 @@
 (* This generated code requires the following version of MenhirLib: *)
 
 let () =
-  MenhirLib.StaticVersion.require_20190924
-
+  MenhirLib.StaticVersion.require_20200123
+  
 module MenhirBasics = struct
   
   exception Error
